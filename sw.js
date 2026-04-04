@@ -1,7 +1,7 @@
 const CACHE_NAME = 'rememberit-v1';
 const urlsToCache = [
     '/',
-    '/RememberIT.html',
+    '/index.html',
     '/manifest.json'
 ];
 
