@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where Is It? - याद रखें कहाँ है</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --primary-dark: #388E3C;
+            --secondary: #1976D2;
+            --danger: #E53935;
+            --bg: #f0f4f3;
+            --card-bg: #ffffff;
+            --text: #212121;
+            --muted: #616161;
+            --border: #e0e0e0;
+            --radius: 12px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px 16px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.6;
+        }
+
+        header { text-align: center; margin-bottom: 24px; }
+        h1 { font-size: 32px; margin: 0 0 4px; }
+        .subtitle { font-size: 18px; color: var(--muted); margin: 0; }
+
+        /* Search + Export row */
+        .top-bar {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        #search-input {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #search-input:focus { border-color: var(--primary); }
+
+        #export-btn {
+            padding: 12px 16px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        #export-btn:hover { background: #1565C0; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 4px;
+            box-shadow: var(--shadow);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* Controls wrapper */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 28px;
+        }
+
+        /* Voice panel */
+        #voice-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        #mic-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            font-size: 48px;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        #mic-btn:hover { transform: scale(1.05); }
+        #mic-btn.recording { background: var(--danger); animation: none; }
+        #mic-btn:disabled { background: #aaa; cursor: not-allowed; animation: none; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: var(--shadow-lg); }
+            50%       { box-shadow: 0 0 24px rgba(76,175,80,0.5); }
+        }
+
+        #status-text {
+            font-size: 15px;
+            text-align: center;
+            min-height: 56px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+        }
+
+        input[type="file"] { display: none; }
+
+        /* Type panel */
+        #type-panel {
+            display: none;
+            width: 100%;
+        }
+
+        .form-group { width: 100%; margin-bottom: 14px; }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            outline: none;
+            transition: border-color 0.2s;
+            background: var(--card-bg);
+        }
+        .form-group input:focus,
+        .form-group select:focus { border-color: var(--primary); }
+
+        #type-photo-label {
+            display: inline-block;
+            padding: 9px 18px;
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+        #type-photo-label:hover { border-color: var(--primary); }
+        #type-photo-name {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 13px;
+            color: var(--muted);
+            vertical-align: middle;
+        }
+
+        #save-text-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #save-text-btn:hover { background: var(--primary-dark); }
+        #save-text-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+        #form-status {
+            font-size: 14px;
+            text-align: center;
+            margin-top: 10px;
+            min-height: 20px;
+            color: var(--primary);
+        }
+        #form-status.error { color: var(--danger); }
+
+        /* Items list */
+        .list-header {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .list-header h2 { margin: 0; font-size: 17px; color: var(--muted); }
+        #item-count { font-size: 13px; color: var(--muted); }
+
+        #items-list {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .empty-state, .loading-state {
+            text-align: center;
+            color: var(--muted);
+            font-size: 15px;
+            padding: 40px 20px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 14px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover { box-shadow: var(--shadow-lg); }
+
+        .card-img-wrap {
+            flex-shrink: 0;
+            width: 76px;
+            height: 76px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+        .card-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+        .card-details { flex: 1; min-width: 0; }
+
+        .card-details h3 {
+            margin: 0 0 3px;
+            font-size: 19px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-details .location {
+            margin: 0 0 8px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .card-date { font-size: 11px; color: #bbb; margin-left: auto; }
+
+        /* Voice action buttons row (camera + skip) */
+        .voice-actions {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        #camera-label {
+            /* overrides the earlier rule below that set display:none */
+            background: var(--secondary);
+            color: white;
+            padding: 14px 28px;
+            font-size: 18px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+        #camera-label:hover { transform: scale(1.02); }
+
+        #skip-photo-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            color: var(--muted);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #skip-photo-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Fallback/manual-confirm form */
+        #voice-fallback {
+            display: none;
+            width: 100%;
+            margin-top: 12px;
+            background: #f9fbe7;
+            border: 1.5px solid #c5e1a5;
+            border-radius: var(--radius);
+            padding: 14px;
+        }
+        #voice-fallback p {
+            margin: 0 0 12px;
+            font-size: 13px;
+            color: #558b2f;
+            text-align: center;
+        }
+        #fallback-save-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        #fallback-save-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .delete-btn:hover { background: var(--danger); color: white; }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 26px; }
+            #mic-btn { width: 100px; height: 100px; font-size: 40px; }
+            .card-details h3 { font-size: 16px; }
+            .card-img-wrap { width: 60px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Where Is It?</h1>
+    <p class="subtitle">याद रखें कहाँ है</p>
+</header>
+
+<div class="top-bar">
+    <input type="text" id="search-input" placeholder="Search items or locations... चीज़ें या स्थान खोजें...">
+    <button id="export-btn">📊 Export CSV</button>
+</div>
+
+<div class="tabs">
+    <button class="tab-btn active" id="tab-voice">🎤 Voice</button>
+    <button class="tab-btn"        id="tab-type">⌨️ Type</button>
+</div>
+
+<div class="controls">
+
+    <!-- Voice Panel -->
+    <div id="voice-panel">
+        <button id="mic-btn" aria-label="Tap to speak">🎤</button>
+        <div id="status-text">
+            Tap the mic and tell me what you are storing.<br>
+            <small>माइक पर टैप करें और बताएं कि आप क्या स्टोर कर रहे हैं।</small>
+        </div>
+        <!-- Shown after speaking; both buttons optional -->
+        <div class="voice-actions" id="voice-actions">
+            <label id="camera-label" for="camera-input">📸 Add Photo (optional) / फोटो लें</label>
+            <input type="file" id="camera-input" accept="image/*" capture="environment">
+            <button id="skip-photo-btn">💾 Save without photo / बिना फोटो सेव करें</button>
+        </div>
+
+        <!-- Manual confirm form: shown when skipping photo OR when AI fails -->
+        <div id="voice-fallback">
+            <p id="fallback-msg">✏️ Confirm details to save / विवरण भरें</p>
+            <div class="form-group">
+                <label>Item Name / चीज़ का नाम</label>
+                <input type="text" id="fallback-item">
+            </div>
+            <div class="form-group">
+                <label>Location / जगह</label>
+                <input type="text" id="fallback-location" placeholder="Where are you putting it?">
+            </div>
+            <div class="form-group">
+                <label>Category / वर्ग</label>
+                <select id="fallback-category">
+                    <option value="Documents">Documents / दस्तावेज़</option>
+                    <option value="Jewelry">Jewelry / गहने</option>
+                    <option value="Electronics">Electronics / इलेक्ट्रॉनिक्स</option>
+                    <option value="Kitchen">Kitchen / रसोई</option>
+                    <option value="Medicine">Medicine / दवाई</option>
+                    <option value="Clothing">Clothing / कपड़े</option>
+                    <option value="Keys">Keys / चाबियाँ</option>
+                    <option value="Finance">Finance / वित्त</option>
+                    <option value="Other">Other / अन्य</option>
+                </select>
+            </div>
+            <button id="fallback-save-btn">💾 Save Anyway / फिर भी सेव करें</button>
+        </div>
+    </div>
+
+    <!-- Type Panel -->
+    <div id="type-panel">
+        <div class="form-group">
+            <label for="item-input">Item Name / चीज़ का नाम</label>
+            <input type="text" id="item-input" placeholder="e.g. Passport, Keys, Charger...">
+        </div>
+        <div class="form-group">
+            <label for="location-input">Location / जगह</label>
+            <input type="text" id="location-input" placeholder="e.g. Top drawer, Blue shelf...">
+        </div>
+        <div class="form-group">
+            <label for="category-select">Category / वर्ग</label>
+            <select id="category-select">
+                <option value="Documents">Documents / दस्तावेज़</option>
+                <option value="Jewelry">Jewelry / गहने</option>
+                <option value="Electronics">Electronics / इलेक्ट्रॉनिक्स</option>
+                <option value="Kitchen">Kitchen / रसोई</option>
+                <option value="Medicine">Medicine / दवाई</option>
+                <option value="Clothing">Clothing / कपड़े</option>
+                <option value="Keys">Keys / चाबियाँ</option>
+                <option value="Finance">Finance / वित्त</option>
+                <option value="Other">Other / अन्य</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Photo (optional) / फोटो (वैकल्पिक)</label>
+            <label id="type-photo-label" for="type-photo-input">📷 Choose Photo / फोटो चुनें</label>
+            <input type="file" id="type-photo-input" accept="image/*">
+            <span id="type-photo-name"></span>
+        </div>
+        <button id="save-text-btn">💾 Save Item / सेव करें</button>
+        <div id="form-status"></div>
+    </div>
+
+</div>
+
+<div class="list-header">
+    <h2>Saved Items / सेव की गई चीज़ें</h2>
+    <span id="item-count"></span>
+</div>
+
+<div id="items-list">
+    <p class="loading-state">Loading... लोड हो रहा है...</p>
+</div>
+
+<!-- ✅ Script is at bottom of body so all DOM elements exist when it runs -->
+<script type="module">
+    import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, orderBy, query,
+             deleteDoc, doc as firestoreDoc }   // ✅ renamed to avoid collision with forEach param
+        from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { get as idbGet, set as idbSet, del as idbDel }
+        from 'https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm';
+
+    // ⚠️ TODO: Move GEMINI_API_KEY to a Cloud Function before going public —
+    //          client-side keys can be scraped and billed against your account.
+    const GEMINI_API_KEY = "AIzaSyAVdNSUDaexzE7FxSGdKIJd8O17rpvVw28";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBDTiXXYt1QeeQ7XBFMZ9RoKXEoO6Kci38",
+        authDomain: "rememberit-b99e8.firebaseapp.com",
+        projectId: "rememberit-b99e8",
+        storageBucket: "rememberit-b99e8.firebasestorage.app",
+        messagingSenderId: "135763422353",
+        appId: "1:135763422353:web:26fe1ecabc79a04f186330"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // --- DOM refs ---
+    const micBtn         = document.getElementById('mic-btn');
+    const cameraInput    = document.getElementById('camera-input');
+    const cameraLabel    = document.getElementById('camera-label');
+    const statusText     = document.getElementById('status-text');
+    const itemsList      = document.getElementById('items-list');
+    const searchInput    = document.getElementById('search-input');
+    const exportBtn      = document.getElementById('export-btn');
+    const tabVoice       = document.getElementById('tab-voice');
+    const tabType        = document.getElementById('tab-type');
+    const voicePanel     = document.getElementById('voice-panel');
+    const typePanel      = document.getElementById('type-panel');
+    const itemInput      = document.getElementById('item-input');
+    const locationInput  = document.getElementById('location-input');
+    const categorySelect = document.getElementById('category-select');
+    const saveTextBtn    = document.getElementById('save-text-btn');
+    const formStatus     = document.getElementById('form-status');
+    const itemCount      = document.getElementById('item-count');
+
+    let allItems = [];            // in-memory cache — search filters this, no extra Firestore reads
+    let currentTranscription = "";
+    let pendingImageData = null;  // holds base64 image while waiting for fallback save
+
+    // =========================================================
+    // Tab switching
+    // =========================================================
+    tabVoice.addEventListener('click', () => {
+        tabVoice.classList.add('active');
+        tabType.classList.remove('active');
+        voicePanel.style.display = 'flex';
+        typePanel.style.display  = 'none';
+    });
+
+    tabType.addEventListener('click', () => {
+        tabType.classList.add('active');
+        tabVoice.classList.remove('active');
+        typePanel.style.display  = 'block';
+        voicePanel.style.display = 'none';
+    });
+
+    // =========================================================
+    // Speech synthesis helper
+    // =========================================================
+    function speak(text) {
+        if (!('speechSynthesis' in window)) return;
+        speechSynthesis.cancel(); // ✅ stop any ongoing speech before starting new
+        const u  = new SpeechSynthesisUtterance(text);
+        u.lang   = 'hi-IN';
+        speechSynthesis.speak(u);
+    }
+
+    // =========================================================
+    // Voice input flow
+    // =========================================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+        const recognition        = new SpeechRecognition();
+        recognition.lang         = 'hi-IN';
+        recognition.interimResults = false;
+
+        micBtn.addEventListener('click', () => {
+            statusText.innerHTML = "Listening... Speak now!<br><small>सुन रहा हूँ... अब बोलें!</small>";
+            speak("सुन रहा हूँ... अब बोलें!");
+            micBtn.classList.add('recording');
+            recognition.start();
+        });
+
+        recognition.onresult = (event) => {
+            currentTranscription = event.results[0][0].transcript;
+            statusText.innerHTML = `Heard: <strong>${escapeHtml(currentTranscription)}</strong><br><small>Add a photo or save without one.</small>`;
+            speak(`सुना: ${currentTranscription}.`);
+            micBtn.classList.remove('recording');
+            showVoiceActions(); // shows camera + skip buttons
+        };
+
+        recognition.onerror = (event) => {
+            // ✅ differentiate error types
+            const msg = event.error === 'no-speech'
+                ? "No speech detected. Try again. / कुछ नहीं सुना, फिर कोशिश करें।"
+                : `Mic error (${event.error}). Please try again.`;
+            statusText.textContent = msg;
+            speak("कुछ नहीं सुना, फिर कोशिश करें।");
+            micBtn.classList.remove('recording');
+        };
+    } else {
+        micBtn.disabled = true;
+        statusText.textContent = "Voice input not supported in this browser — use the Type tab.";
+    }
+
+    // =========================================================
+    // Camera + skip-photo controls
+    // =========================================================
+    const voiceActions    = document.getElementById('voice-actions');
+    const voiceFallback   = document.getElementById('voice-fallback');
+    const fallbackMsg     = document.getElementById('fallback-msg');
+    const fallbackItem    = document.getElementById('fallback-item');
+    const fallbackLocation = document.getElementById('fallback-location');
+    const fallbackCategory = document.getElementById('fallback-category');
+    const fallbackSaveBtn  = document.getElementById('fallback-save-btn');
+    const skipPhotoBtn     = document.getElementById('skip-photo-btn');
+
+    function showVoiceActions() {
+        voiceActions.style.display = 'flex';
+    }
+    function hideVoiceActions() {
+        voiceActions.style.display = 'none';
+    }
+    function showFallback(msg, prefilledItem = '') {
+        fallbackMsg.textContent   = msg;
+        fallbackItem.value        = prefilledItem;
+        fallbackLocation.value    = '';
+        fallbackItem.style.borderColor    = '';
+        fallbackLocation.style.borderColor = '';
+        voiceFallback.style.display = 'block';
+        fallbackLocation.focus();
+    }
+    function resetVoicePanel() {
+        hideVoiceActions();
+        voiceFallback.style.display = 'none';
+        pendingImageData = null;
+        cameraInput.value = '';
+    }
+
+    // "Save without photo" — show manual form pre-filled with transcription
+    skipPhotoBtn.addEventListener('click', () => {
+        hideVoiceActions();
+        showFallback('✏️ Confirm details to save / विवरण भरें', currentTranscription);
+    });
+
+    // Camera selected → try Gemini, fall back to manual form on failure
+    cameraInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        hideVoiceActions();
+        voiceFallback.style.display = 'none';
+        statusText.innerHTML = "Thinking... AI is reading the photo ⏳<br><small>सोच रहा हूँ...</small>";
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            pendingImageData = reader.result;
+            const base64Image = reader.result.split(',')[1];
+            try {
+                const aiResult = await analyzeWithGemini(currentTranscription, base64Image);
+                await saveItem(aiResult.item, aiResult.location, aiResult.category, reader.result);
+                statusText.innerHTML = `✅ Saved! <strong>${escapeHtml(aiResult.item)}</strong> → ${escapeHtml(aiResult.location)}`;
+                speak(`सेव हो गया! ${aiResult.item} यहाँ है: ${aiResult.location}.`);
+                resetVoicePanel();
+            } catch (err) {
+                console.error('Gemini failed:', err.message);
+                statusText.innerHTML = `⚠️ AI failed: <small>${escapeHtml(err.message)}</small>`;
+                showFallback('Fill in details to save with photo / फोटो के साथ सेव करें', currentTranscription);
+            }
+        };
+    });
+
+    // Manual save from fallback form (no photo OR AI failed with photo)
+    fallbackSaveBtn.addEventListener('click', async () => {
+        const item     = fallbackItem.value.trim();
+        const location = fallbackLocation.value.trim();
+        fallbackItem.style.borderColor     = item     ? '' : 'red';
+        fallbackLocation.style.borderColor = location ? '' : 'red';
+        if (!item || !location) return;
+
+        fallbackSaveBtn.disabled = true;
+        try {
+            await saveItem(item, location, fallbackCategory.value, pendingImageData);
+            statusText.innerHTML = `✅ Saved! <strong>${escapeHtml(item)}</strong> → ${escapeHtml(location)}`;
+            speak(`सेव हो गया! ${item} यहाँ है: ${location}.`);
+            resetVoicePanel();
+        } catch (err) {
+            console.error('Save failed:', err.message);
+            statusText.textContent = `Save failed: ${err.message}`;
+        } finally {
+            fallbackSaveBtn.disabled = false;
+        }
+    });
+
+    // Shared save helper used by both AI path and fallback path
+    async function saveItem(item, location, category, imageDataUrl) {
+        const itemId = imageDataUrl ? 'item_' + Date.now() : null;
+        if (imageDataUrl && itemId) await idbSet(itemId, imageDataUrl);
+        await addDoc(collection(db, "catalogItems"), {
+            id: itemId, item, location, category, timestamp: Date.now()
+        });
+        await loadItems();
+    }
+
+    // =========================================================
+    // Gemini API — with 15 s AbortController timeout
+    // =========================================================
+    async function analyzeWithGemini(text, base64Image) {
+        const prompt = `Look at this image and read this sentence: "${text}".
+Extract the exact item being stored and its location. Assign a short category (e.g., Jewelry, Documents, Kitchen, Medicine).
+Return ONLY a valid JSON object with keys: "item", "location", "category". No markdown.`;
+
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 15000); // 15 s hard timeout
+
+        let response;
+        try {
+            response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal:  controller.signal,
+                    body: JSON.stringify({
+                        contents: [{ parts: [
+                            { text: prompt },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                        ]}]
+                    })
+                }
+            );
+        } catch (err) {
+            if (err.name === 'AbortError') throw new Error('Gemini timed out after 15 s');
+            throw new Error(`Network error: ${err.message}`);
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`Gemini ${response.status}: ${body.slice(0, 120)}`);
+        }
+        const data    = await response.json();
+        const rawText = data.candidates[0].content.parts[0].text;
+        const jsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(jsonStr);
+        } catch {
+            throw new Error(`Bad JSON from Gemini: ${jsonStr.slice(0, 80)}`);
+        }
+    }
+
+    // =========================================================
+    // Manual text save
+    // =========================================================
+    const typePhotoInput = document.getElementById('type-photo-input');
+    const typePhotoName  = document.getElementById('type-photo-name');
+
+    // Show selected filename next to the button
+    typePhotoInput.addEventListener('change', () => {
+        typePhotoName.textContent = typePhotoInput.files[0]
+            ? typePhotoInput.files[0].name
+            : '';
+    });
+
+    saveTextBtn.addEventListener('click', async () => {
+        const item     = itemInput.value.trim();
+        const location = locationInput.value.trim();
+        const category = categorySelect.value;
+
+        if (!item || !location) {
+            formStatus.textContent = "Please fill in both Item and Location.";
+            formStatus.className   = 'error';
+            return;
+        }
+
+        saveTextBtn.disabled   = true;
+        formStatus.textContent = "Saving... / सेव हो रहा है...";
+        formStatus.className   = '';
+
+        try {
+            // Read photo if one was selected, otherwise pass null
+            const imageDataUrl = await readFileAsDataURL(typePhotoInput.files[0]);
+            await saveItem(item, location, category, imageDataUrl);
+            formStatus.textContent = `✓ Saved! "${item}" in ${location}`;
+            itemInput.value        = '';
+            locationInput.value    = '';
+            typePhotoInput.value   = '';
+            typePhotoName.textContent = '';
+        } catch (err) {
+            console.error('Text save failed:', err.message);
+            formStatus.textContent = `Save failed: ${err.message}`;
+            formStatus.className   = 'error';
+        } finally {
+            saveTextBtn.disabled = false;
+        }
+    });
+
+    // Resolves with base64 data URL if file exists, null otherwise
+    function readFileAsDataURL(file) {
+        if (!file) return Promise.resolve(null);
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload  = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Could not read image file'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // allow Enter key to submit the type form
+    [itemInput, locationInput].forEach(el => {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') saveTextBtn.click(); });
+    });
+
+    // =========================================================
+    // Load from Firestore (once) then filter in memory
+    // =========================================================
+    async function loadItems() {
+        const q        = query(collection(db, "catalogItems"), orderBy("timestamp", "desc"));
+        const snapshot = await getDocs(q);
+        // ✅ renamed forEach param from 'doc' to 'docSnap' to avoid shadowing the imported `firestoreDoc`
+        allItems = snapshot.docs.map(docSnap => ({ docId: docSnap.id, ...docSnap.data() }));
+        renderItems(searchInput.value);
+    }
+
+    // =========================================================
+    // Render (client-side search — no extra Firestore reads)
+    // =========================================================
+    function renderItems(searchTerm = '') {
+        const term     = searchTerm.toLowerCase().trim();
+        const filtered = term
+            ? allItems.filter(it =>
+                it.item.toLowerCase().includes(term) ||
+                it.location.toLowerCase().includes(term) ||
+                (it.category || '').toLowerCase().includes(term))
+            : allItems;
+
+        itemCount.textContent = `${filtered.length} item${filtered.length !== 1 ? 's' : ''}`;
+        itemsList.innerHTML   = '';
+
+        if (filtered.length === 0) {
+            const p = document.createElement('p');
+            p.className   = 'empty-state';
+            p.textContent = term
+                ? `No items match "${searchTerm}"`
+                : 'No items saved yet — tap the mic or use the Type tab to add one!';
+            itemsList.appendChild(p);
+            return;
+        }
+
+        // ✅ cards created synchronously (correct order guaranteed);
+        //    images loaded async after card is already in DOM
+        filtered.forEach(item => {
+            const card = buildCard(item);
+            itemsList.appendChild(card);
+            if (item.id) {
+                idbGet(item.id).then(imgData => {
+                    if (!imgData) return;
+                    const img = document.createElement('img');
+                    img.src   = imgData;
+                    img.alt   = item.item;
+                    const wrap = card.querySelector('.card-img-wrap');
+                    wrap.innerHTML = '';
+                    wrap.appendChild(img);
+                });
+            }
+        });
+    }
+
+    // ✅ All user data inserted via textContent — no XSS risk
+    function buildCard(item) {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // image placeholder
+        const imgWrap = document.createElement('div');
+        imgWrap.className   = 'card-img-wrap';
+        imgWrap.textContent = '📦';
+
+        // details
+        const details = document.createElement('div');
+        details.className = 'card-details';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = item.item;
+
+        const loc = document.createElement('p');
+        loc.className   = 'location';
+        loc.textContent = '📍 ' + item.location;
+
+        const footer = document.createElement('div');
+        footer.className = 'card-footer';
+
+        const badge = document.createElement('span');
+        badge.className   = 'badge';
+        badge.textContent = item.category || 'Other';
+
+        const dateEl = document.createElement('span');
+        dateEl.className   = 'card-date';
+        dateEl.textContent = new Date(item.timestamp).toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className   = 'delete-btn';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => deleteItem(item.docId, item.id, card));
+
+        footer.append(badge, delBtn, dateEl);
+        details.append(h3, loc, footer);
+        card.append(imgWrap, details);
+        return card;
+    }
+
+    // =========================================================
+    // Delete
+    // =========================================================
+    async function deleteItem(docId, itemId, cardEl) {
+        if (!confirm('Delete this item?\nक्या आप इसे हटाना चाहते हैं?')) return;
+        cardEl.style.opacity = '0.4';
+        try {
+            await deleteDoc(firestoreDoc(db, "catalogItems", docId)); // ✅ uses renamed import
+            if (itemId) await idbDel(itemId);
+            allItems = allItems.filter(it => it.docId !== docId);
+            renderItems(searchInput.value);
+        } catch (err) {
+            console.error(err);
+            cardEl.style.opacity = '1';
+            alert('Delete failed. / हटाने में समस्या हुई।');
+        }
+    }
+
+    // =========================================================
+    // Search — purely client-side, no Firestore reads
+    // =========================================================
+    searchInput.addEventListener('input', (e) => renderItems(e.target.value));
+
+    // =========================================================
+    // Export to CSV (opens cleanly in Excel & Google Sheets)
+    // =========================================================
+    exportBtn.addEventListener('click', () => {
+        if (allItems.length === 0) { alert('No items to export yet.'); return; }
+
+        const headers = ['Item', 'Location', 'Category', 'Date Added'];
+        const rows    = allItems.map(it => [
+            it.item,
+            it.location,
+            it.category || 'Other',
+            new Date(it.timestamp).toLocaleDateString('en-IN')
+        ]);
+
+        const csv = [headers, ...rows]
+            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\r\n'); // \r\n for Excel compatibility
+
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `RememberIT_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // =========================================================
+    // Utility
+    // =========================================================
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g,  '&amp;')
+            .replace(/</g,  '&lt;')
+            .replace(/>/g,  '&gt;')
+            .replace(/"/g,  '&quot;');
+    }
+
+    // =========================================================
+    // Init — no setTimeout needed, Firebase initializes sync
+    // =========================================================
+    loadItems();
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+    }
+</script>
+
+</body>
+</html>
