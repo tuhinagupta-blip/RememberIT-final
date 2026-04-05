@@ -597,58 +597,84 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
-        const recognition          = new SpeechRecognition();
-        recognition.lang           = 'hi-IN';
-        recognition.interimResults = false;
-        recognition.continuous     = false;
+        let recognition   = null;
+        let isRecording   = false;
+        let safetyTimer   = null;
 
-        let isRecording = false;
+        function resetMic(msg) {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            clearTimeout(safetyTimer);
+            if (msg) statusText.innerHTML = msg;
+        }
 
         micBtn.addEventListener('click', () => {
             if (isRecording) {
-                recognition.stop();
+                try { recognition && recognition.stop(); } catch (e) {}
+                resetMic("Stopped. Tap mic to try again.");
                 return;
             }
+
+            // Always create a fresh instance — reusing the same object breaks on mobile
+            recognition                  = new SpeechRecognition();
+            recognition.lang             = 'hi-IN';
+            recognition.interimResults   = true;   // show live transcript
+            recognition.continuous       = false;
+            recognition.maxAlternatives  = 1;
+
+            recognition.onresult = (event) => {
+                clearTimeout(safetyTimer);
+                let interimText = '';
+                let finalText   = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const t = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalText   += t;
+                    else                          interimText += t;
+                }
+                if (finalText) {
+                    currentTranscription = finalText;
+                    resetMic();
+                    statusText.innerHTML = `Heard: <strong>${escapeHtml(currentTranscription)}</strong><br><small>Add a photo or save without one.</small>`;
+                    speak(`सुना: ${currentTranscription}.`);
+                    showVoiceActions();
+                } else if (interimText) {
+                    // Live transcript while user is still speaking
+                    statusText.innerHTML = `<em>${escapeHtml(interimText)}...</em>`;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                const msg = event.error === 'no-speech'
+                    ? "No speech detected. Tap mic to try again. / कुछ नहीं सुना, फिर कोशिश करें।"
+                    : `Mic error (${event.error}). Please try again.`;
+                resetMic(msg);
+                if (event.error === 'no-speech') speak("कुछ नहीं सुना, फिर कोशिश करें।");
+            };
+
+            // Fires after onresult/onerror — resets if still stuck (e.g. mobile auto-timeout)
+            recognition.onend = () => {
+                if (isRecording) resetMic("No speech detected. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
+            };
+
             isRecording = true;
+            micBtn.classList.add('recording');
             statusText.innerHTML = "Listening... Speak now!<br><small>सुन रहा हूँ... अब बोलें!</small>";
             speak("सुन रहा हूँ... अब बोलें!");
-            micBtn.classList.add('recording');
+
             try {
                 recognition.start();
+                // Safety net: mobile browsers can hang without ever firing onend
+                safetyTimer = setTimeout(() => {
+                    if (isRecording) {
+                        try { recognition.abort(); } catch (e) {}
+                        resetMic("Timed out. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
+                    }
+                }, 15000);
             } catch (e) {
-                isRecording = false;
-                micBtn.classList.remove('recording');
-                statusText.textContent = "Mic error. Please try again.";
+                resetMic("Mic error. Please try again.");
             }
         });
 
-        recognition.onresult = (event) => {
-            isRecording = false;
-            currentTranscription = event.results[0][0].transcript;
-            statusText.innerHTML = `Heard: <strong>${escapeHtml(currentTranscription)}</strong><br><small>Add a photo or save without one.</small>`;
-            speak(`सुना: ${currentTranscription}.`);
-            micBtn.classList.remove('recording');
-            showVoiceActions(); // shows camera + skip buttons
-        };
-
-        recognition.onerror = (event) => {
-            isRecording = false;
-            const msg = event.error === 'no-speech'
-                ? "No speech detected. Try again. / कुछ नहीं सुना, फिर कोशिश करें।"
-                : `Mic error (${event.error}). Please try again.`;
-            statusText.textContent = msg;
-            speak("कुछ नहीं सुना, फिर कोशिश करें।");
-            micBtn.classList.remove('recording');
-        };
-
-        // Resets state if recognition ends without a result (e.g. mobile auto-timeout)
-        recognition.onend = () => {
-            if (isRecording) {
-                isRecording = false;
-                micBtn.classList.remove('recording');
-                statusText.innerHTML = "No speech detected. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>";
-            }
-        };
     } else {
         micBtn.disabled = true;
         statusText.textContent = "Voice input not supported in this browser — use the Type tab.";
