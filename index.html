@@ -597,14 +597,28 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
-        let recognition   = null;
-        let isRecording   = false;
-        let safetyTimer   = null;
+        let recognition    = null;
+        let isRecording    = false;
+        let safetyTimer    = null;
+        let debounceTimer  = null;
+        let lastInterim    = '';
+
+        function finalise(text) {
+            clearTimeout(debounceTimer);
+            clearTimeout(safetyTimer);
+            currentTranscription = text;
+            resetMic();
+            statusText.innerHTML = `Heard: <strong>${escapeHtml(currentTranscription)}</strong><br><small>Add a photo or save without one.</small>`;
+            speak(`सुना: ${currentTranscription}.`);
+            showVoiceActions();
+        }
 
         function resetMic(msg) {
             isRecording = false;
             micBtn.classList.remove('recording');
             clearTimeout(safetyTimer);
+            clearTimeout(debounceTimer);
+            lastInterim = '';
             if (msg) statusText.innerHTML = msg;
         }
 
@@ -616,11 +630,11 @@
             }
 
             // Always create a fresh instance — reusing the same object breaks on mobile
-            recognition                  = new SpeechRecognition();
-            recognition.lang             = 'hi-IN';
-            recognition.interimResults   = true;   // show live transcript
-            recognition.continuous       = false;
-            recognition.maxAlternatives  = 1;
+            recognition                 = new SpeechRecognition();
+            recognition.lang            = 'hi-IN';
+            recognition.interimResults  = true;
+            recognition.continuous      = false;
+            recognition.maxAlternatives = 1;
 
             recognition.onresult = (event) => {
                 clearTimeout(safetyTimer);
@@ -631,15 +645,23 @@
                     if (event.results[i].isFinal) finalText   += t;
                     else                          interimText += t;
                 }
+
                 if (finalText) {
-                    currentTranscription = finalText;
-                    resetMic();
-                    statusText.innerHTML = `Heard: <strong>${escapeHtml(currentTranscription)}</strong><br><small>Add a photo or save without one.</small>`;
-                    speak(`सुना: ${currentTranscription}.`);
-                    showVoiceActions();
+                    // Browser gave us a clean final result
+                    finalise(finalText);
                 } else if (interimText) {
-                    // Live transcript while user is still speaking
+                    // Show live transcript and start debounce timer.
+                    // On mobile Chrome, isFinal often never fires — after 1.5s
+                    // of silence with no new result we treat the last text as final.
+                    lastInterim = interimText;
                     statusText.innerHTML = `<em>${escapeHtml(interimText)}...</em>`;
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        if (isRecording && lastInterim) {
+                            try { recognition.stop(); } catch (e) {}
+                            finalise(lastInterim);
+                        }
+                    }, 1500);
                 }
             };
 
@@ -651,9 +673,16 @@
                 if (event.error === 'no-speech') speak("कुछ नहीं सुना, फिर कोशिश करें।");
             };
 
-            // Fires after onresult/onerror — resets if still stuck (e.g. mobile auto-timeout)
             recognition.onend = () => {
-                if (isRecording) resetMic("No speech detected. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
+                // If debounce already finalised, isRecording is false — do nothing.
+                // Otherwise reset (timed out / stopped with no speech).
+                if (isRecording) {
+                    if (lastInterim) {
+                        finalise(lastInterim);
+                    } else {
+                        resetMic("No speech detected. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
+                    }
+                }
             };
 
             isRecording = true;
@@ -663,11 +692,12 @@
 
             try {
                 recognition.start();
-                // Safety net: mobile browsers can hang without ever firing onend
+                // Hard safety net for complete hangs on mobile
                 safetyTimer = setTimeout(() => {
                     if (isRecording) {
                         try { recognition.abort(); } catch (e) {}
-                        resetMic("Timed out. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
+                        if (lastInterim) finalise(lastInterim);
+                        else resetMic("Timed out. Tap mic to try again.<br><small>फिर से माइक दबाएं।</small>");
                     }
                 }, 15000);
             } catch (e) {
